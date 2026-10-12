@@ -37,6 +37,9 @@
         <div class="send-form" id="send-form">
           <label for="send-email">Their email</label>
           <input id="send-email" type="email" autocomplete="off" placeholder="name@example.com" required />
+          <label for="send-from">Your email</label>
+          <input id="send-from" type="email" autocomplete="email" placeholder="you@example.com" required />
+          <input class="sr-only" id="send-website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
           <label for="send-text">Message <span class="count" id="send-count"></span></label>
           <textarea id="send-text" rows="3" placeholder="Write a few words to go under the bouquet"></textarea>
           <p class="error" id="send-error" role="alert"></p>

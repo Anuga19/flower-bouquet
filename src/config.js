@@ -45,14 +45,12 @@ export const FILLERS = {
   babysBreath: true, // small white sprigs tucked into the gaps between heads
 };
 
-// Sending a bouquet. With these three EmailJS values filled in, "Send bouquet"
-// emails the link straight from the page (template fields: to_email, message,
-// link). Left empty, it opens the sender's own email app with the email
-// already written, and they press send there.
+// Sending a bouquet. The page posts to this address, where a small server
+// function (in the portfolio site) emails the link from an address on the
+// domain, with replies going to the sender. If the function is not there or
+// not set up, "Send bouquet" opens the sender's own email app instead.
 export const EMAIL = {
-  serviceId: '',
-  templateId: '',
-  publicKey: '',
+  endpoint: '/api/send-bouquet',
   subject: 'A bouquet for you',
   textMax: 240,
 };

@@ -217,7 +217,7 @@ export function createUI(view) {
   $('clear').addEventListener('click', () => { setCounts({}); close(true); });
   $('reset').addEventListener('click', () => { setCounts(DEFAULTS.stems); close(true); });
   // --- send bouquet: email address and a few words -----------------------
-  const sendForm = $('send-form'), sendDone = $('send-done'), sendEmail = $('send-email'), sendText = $('send-text');
+  const sendForm = $('send-form'), sendDone = $('send-done'), sendEmail = $('send-email'), sendFrom = $('send-from'), sendText = $('send-text');
   const sendError = $('send-error'), sendSubmit = $('send-submit');
   let sentLink = '';
   sendText.maxLength = EMAIL.textMax;
@@ -233,32 +233,37 @@ export function createUI(view) {
 
   $('send-pop').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const to = sendEmail.value.trim(), text = sendText.value.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { sendError.textContent = 'Enter a full email address, like name@example.com.'; sendEmail.focus(); return; }
+    const to = sendEmail.value.trim(), from = sendFrom.value.trim(), text = sendText.value.trim();
+    const valid = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    if (!valid(to)) { sendError.textContent = 'Enter their full email address, like name@example.com.'; sendEmail.focus(); return; }
+    if (!valid(from)) { sendError.textContent = 'Enter your full email address, so they can reply to you.'; sendFrom.focus(); return; }
     sendError.textContent = '';
     sentLink = makeLink(state, text);
-    const direct = EMAIL.serviceId && EMAIL.templateId && EMAIL.publicKey;
+
+    // Ask the site to send the email. 'sent' = done, 'fallback' = no mail
+    // service here (use the sender's email app), anything else = show why.
+    let outcome = 'fallback';
+    sendSubmit.disabled = true; sendSubmit.textContent = 'Sending';
+    try {
+      const res = await fetch(EMAIL.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, from, text, link: sentLink, website: $('send-website').value }),
+      });
+      if (res.ok) outcome = 'sent';
+      else if (res.status === 429) outcome = 'Too many bouquets were sent from here. Try again in a few minutes.';
+      else if (res.status === 400 || res.status === 502) outcome = 'The email could not be sent. Check both addresses and try again.';
+    } catch { /* offline or no server: fall back */ }
+    sendSubmit.disabled = false; sendSubmit.textContent = 'Send bouquet';
+
     let title, detail;
-    if (direct) {
-      sendSubmit.disabled = true; sendSubmit.textContent = 'Sending';
-      try {
-        const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ service_id: EMAIL.serviceId, template_id: EMAIL.templateId, user_id: EMAIL.publicKey, template_params: { to_email: to, message: text, link: sentLink } }),
-        });
-        if (!res.ok) throw new Error(await res.text());
-        title = 'Bouquet sent'; detail = `It is on its way to ${to}.`;
-      } catch {
-        sendError.textContent = 'The email could not be sent. Check the connection and try again.';
-        return;
-      } finally { sendSubmit.disabled = false; sendSubmit.textContent = 'Send bouquet'; }
-    } else {
-      // no mail service set up: hand the finished email to the sender's own app
+    if (outcome === 'sent') {
+      title = 'Bouquet sent'; detail = `It is on its way to ${to}. If they reply, it comes to ${from}.`;
+    } else if (outcome === 'fallback') {
       const body = `${text ? `${text}\n\n` : ''}Open your bouquet:\n${sentLink}`;
       location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(EMAIL.subject)}&body=${encodeURIComponent(body)}`;
       title = 'Email ready'; detail = `Your email app has the bouquet for ${to}. Press send there.`;
-    }
+    } else { sendError.textContent = outcome; return; }
     $('send-done-title').textContent = title;
     $('send-done-text').textContent = detail;
     $('send-preview').href = sentLink;
