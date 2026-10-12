@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Bouquet Builder</title>
+  </head>
+  <body>
+    <h1 class="sr-only">Bouquet Builder</h1>
+
+    <main class="stage" id="stage" tabindex="0" role="application"
+      aria-label="3D bouquet preview. Drag or use the arrow keys to rotate.">
+      <p class="stage-fallback" id="stage-fallback" hidden>
+        The 3D preview needs WebGL, which is not available in this browser. You can still build the bouquet.
+      </p>
+    </main>
+
+    <header class="topbar">
+      <button type="button" class="link-btn" id="items-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="items-pop">Check items</button>
+      <button type="button" class="icon-btn" id="menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-pop" aria-label="Menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" /></svg>
+      </button>
+
+      <div class="panel items" id="items-pop" role="dialog" aria-label="Flowers in the bouquet" inert>
+        <ul class="item-list" id="item-list"></ul>
+        <p class="panel-foot" id="stem-count"></p>
+      </div>
+
+      <div class="panel menu" id="menu-pop" role="menu" aria-label="Menu" inert>
+        <button type="button" role="menuitem" id="clear">Remove all items</button>
+        <button type="button" role="menuitem" id="reset">Load example bouquet</button>
+        <button type="button" role="menuitem" id="send">Send bouquet</button>
+      </div>
+
+      <form class="panel send" id="send-pop" aria-label="Send bouquet" inert novalidate>
+        <div class="send-form" id="send-form">
+          <label for="send-email">Their email</label>
+          <input id="send-email" type="email" autocomplete="off" placeholder="name@example.com" required />
+          <label for="send-text">Message <span class="count" id="send-count"></span></label>
+          <textarea id="send-text" rows="3" placeholder="Write a few words to go under the bouquet"></textarea>
+          <p class="error" id="send-error" role="alert"></p>
+          <button type="submit" class="primary" id="send-submit">Send bouquet</button>
+        </div>
+        <div class="send-done" id="send-done" hidden>
+          <p class="done-title" id="send-done-title" tabindex="-1"></p>
+          <p class="done-text" id="send-done-text"></p>
+          <div class="done-actions">
+            <button type="button" class="link-btn" id="send-copy">Copy link</button>
+            <a class="link-btn" id="send-preview" target="_blank" rel="noopener">See what they will see</a>
+          </div>
+        </div>
+      </form>
+    </header>
+
+    <footer class="dock-wrap" id="dock-wrap">
+      <p class="hint" id="hint">Drag to rotate. Arrow keys work when the preview is focused.</p>
+      <p class="toast" id="toast" role="status" aria-live="polite"></p>
+
+      <div class="panel pop" id="wrap-pop" role="dialog" aria-label="Wrapper color" inert>
+        <div class="swatches" id="wrapper-swatches" role="radiogroup" aria-label="Wrapper color"></div>
+      </div>
+
+      <div class="panel pop note-pop" id="note-pop" role="dialog" aria-label="Tag message" inert>
+        <label for="message">Tag message</label>
+        <input class="message" id="message" type="text" autocomplete="off" spellcheck="true" placeholder="Write a short message" />
+        <span class="count" id="message-count"></span>
+      </div>
+
+      <nav class="dock" aria-label="Bouquet tools">
+        <div class="dock-row">
+          <div class="dock-flowers" id="flower-list" role="group" aria-label="Add flowers"></div>
+          <span class="dock-divider" aria-hidden="true"></span>
+          <button type="button" class="tool" id="wrap-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="wrap-pop" aria-label="Change wrapper color">
+            <span class="wrap-stack" aria-hidden="true"><img id="wrap-img" alt="" draggable="false" /><img id="wrap-img-next" alt="" draggable="false" /></span>
+          </button>
+          <button type="button" class="tool" id="note-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="note-pop" aria-label="Edit tag message">
+            <img class="note-img" id="note-img" alt="" draggable="false" />
+          </button>
+        </div>
+      </nav>
+    </footer>
+
+    <!-- what the person who receives a bouquet sees under it -->
+    <section class="letter" id="letter" aria-label="Message" hidden>
+      <p class="letter-text" id="letter-text"></p>
+      <a class="letter-link" id="letter-link">Make your own bouquet</a>
+    </section>
+
+    <p class="sr-only" id="announce" aria-live="polite"></p>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

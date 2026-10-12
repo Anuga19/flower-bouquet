@@ -1,0 +1,7 @@
+node_modules
+dist
+.claude
+.vercel
+# original Figma exports the toolbar images were cut from (14 MB)
+design-source
+.DS_Store
