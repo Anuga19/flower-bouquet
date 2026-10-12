@@ -1,6 +1,7 @@
 // Toolbar, popovers and menus. Holds the order state and tells the 3D view
 // (if there is one) what changed.
 
+import { track } from '@vercel/analytics';
 import { FLOWERS, WRAPPERS, LIMITS, DEFAULTS, EMAIL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -264,6 +265,8 @@ export function createUI(view) {
       location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(EMAIL.subject)}&body=${encodeURIComponent(body)}`;
       title = 'Email ready'; detail = `Your email app has the bouquet for ${to}. Press send there.`;
     } else { sendError.textContent = outcome; return; }
+    // counts only: how it went out and how big the bouquet was, nothing personal
+    track('Bouquet sent', { via: outcome === 'sent' ? 'site' : 'email app', stems: totalStems(state.counts) });
     $('send-done-title').textContent = title;
     $('send-done-text').textContent = detail;
     $('send-preview').href = sentLink;

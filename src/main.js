@@ -4,7 +4,12 @@ import '@fontsource-variable/caveat';
 import '@fontsource/dm-mono/400.css';
 import '@fontsource/dm-mono/500.css';
 import './styles.css';
+import { inject, track } from '@vercel/analytics';
 import { createUI } from './ui.js';
+
+// Vercel Analytics (the portfolio project has it switched on). A bouquet link
+// carries the note and message after the #, so that part is never reported.
+inject({ beforeSend: (event) => ({ ...event, url: event.url.split('#')[0] }) });
 
 const stage = document.getElementById('stage');
 const fallback = document.getElementById('stage-fallback');
@@ -29,6 +34,7 @@ async function boot() {
       setMessage: (text) => { bouquet.wrapper.setMessage(text); scene?.invalidate(); },
     };
     ui = createUI(view);
+    if (ui.received) track('Bouquet opened');
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (ui.received && !reduced) bouquet.reveal(); else bouquet.settle();
     scene = createScene(stage, bouquet);
