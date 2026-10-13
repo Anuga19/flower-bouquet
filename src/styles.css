@@ -114,6 +114,27 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 }
 .menu button:hover { background: var(--hover); }
 
+/* saved bouquets */
+.saved { width: min(320px, calc(100vw - 24px)); padding: 8px 8px 12px; }
+.saved .panel-foot { margin: 6px 8px 0; }
+.saved-list li { display: flex; align-items: center; gap: 4px; }
+.saved-list li.new { animation: row-in 0.3s var(--ease); }
+.saved-list .empty { display: block; color: var(--muted); padding: 12px 8px; }
+.saved-open {
+  flex: 1; min-width: 0; display: grid; grid-template-columns: 22px 1fr; column-gap: 10px; align-items: center;
+  text-align: left; padding: 9px 8px; border: 0; background: none; border-radius: 12px; cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.saved-open:hover { background: var(--hover); }
+.saved-open i { grid-row: span 2; width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.14); }
+.saved-open b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.saved-open small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.saved-del {
+  flex: none; width: 32px; height: 32px; border-radius: 50%; border: 0; background: none; cursor: pointer; color: var(--muted);
+  font: 18px/1 var(--mono); transition: background-color 0.15s ease, color 0.15s ease;
+}
+.saved-del:hover { background: var(--hover); color: var(--ink); }
+
 /* send bouquet */
 .send { width: min(320px, calc(100vw - 24px)); padding: 18px; }
 .send-form, .send-done { display: grid; gap: 8px; }

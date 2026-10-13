@@ -30,7 +30,14 @@
       <div class="panel menu" id="menu-pop" role="menu" aria-label="Menu" inert>
         <button type="button" role="menuitem" id="clear">Remove all items</button>
         <button type="button" role="menuitem" id="reset">Load example bouquet</button>
+        <button type="button" role="menuitem" id="save">Save bouquet</button>
+        <button type="button" role="menuitem" id="open-saved">Saved bouquets</button>
         <button type="button" role="menuitem" id="send">Send bouquet</button>
+      </div>
+
+      <div class="panel saved" id="saved-pop" role="dialog" aria-label="Saved bouquets" inert>
+        <ul class="saved-list" id="saved-list"></ul>
+        <p class="panel-foot">Saved in this browser on this device.</p>
       </div>
 
       <form class="panel send" id="send-pop" aria-label="Send bouquet" inert novalidate>

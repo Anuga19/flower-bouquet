@@ -50,6 +50,35 @@ function makeLink(state, text = null) {
   return `${location.origin}${location.pathname}#s=${stems}&w=${state.wrapper}${note}${sent}`;
 }
 
+// Bouquets are kept in this browser: the one being worked on (so it is still
+// there next visit) and a short list the person chose to save.
+const STORE_KEY = 'bouquet-builder:v1';
+const SAVED_MAX = 12;
+function readStore() {
+  try {
+    const data = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
+    return { current: data.current || null, saved: Array.isArray(data.saved) ? data.saved : [] };
+  } catch { return { current: null, saved: [] }; }
+}
+function writeStore(store) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); return true; } catch { return false; } // private mode, storage full
+}
+// Anything read back is checked like a link would be.
+function cleanBouquet(b) {
+  if (!b || typeof b !== 'object') return null;
+  const stems = {};
+  let left = LIMITS.maxStems;
+  for (const f of FLOWERS) {
+    const n = Math.min(left, Math.max(0, parseInt(b.stems?.[f.id], 10) || 0));
+    if (n) { stems[f.id] = n; left -= n; }
+  }
+  return {
+    stems,
+    wrapper: WRAPPERS.some((w) => w.id === b.wrapper) ? b.wrapper : DEFAULTS.wrapper,
+    message: String(b.message || '').slice(0, LIMITS.messageMax),
+  };
+}
+
 const asset = (name) => `${import.meta.env.BASE_URL}toolbar/${name}.png`;
 
 // The wrapper picture is drawn in pink. This repaints it in any paper and
@@ -80,7 +109,27 @@ function tintWrapper(img, paper, ribbon) {
 
 export function createUI(view) {
   const link = readLink();
-  const start = link || { stems: DEFAULTS.stems, wrapper: DEFAULTS.wrapper, message: DEFAULTS.message };
+  const received = !!link?.received;
+  const store = readStore();
+  // Start from a link if there is one, else the bouquet left here last time,
+  // else the example.
+  const last = cleanBouquet(store.current);
+  const start = link || (last && Object.keys(last.stems).length ? last : null)
+    || { stems: DEFAULTS.stems, wrapper: DEFAULTS.wrapper, message: DEFAULTS.message };
+  let ready = false; // set once the first bouquet is loaded
+
+  const snapshot = () => ({
+    stems: Object.fromEntries(FLOWERS.filter((f) => state.counts[f.id]).map((f) => [f.id, state.counts[f.id]])),
+    wrapper: state.wrapper,
+    message: state.message,
+  });
+  // Remember the bouquet as it is now. A received bouquet is someone else's,
+  // so viewing one never replaces your own.
+  function persist() {
+    if (!ready || received) return;
+    store.current = snapshot();
+    writeStore(store);
+  }
   const state = {
     counts: Object.fromEntries(FLOWERS.map((f) => [f.id, 0])),
     wrapper: start.wrapper,
@@ -107,7 +156,7 @@ export function createUI(view) {
   // --- wrapper colors ----------------------------------------------------
   for (const w of WRAPPERS) {
     const input = el('input', { type: 'radio', name: 'wrapper', value: w.id, id: `wrap-${w.id}`, class: 'sr-only', checked: w.id === state.wrapper });
-    input.addEventListener('change', () => { state.wrapper = w.id; view?.setWrapper(w); renderWrapper(); });
+    input.addEventListener('change', () => { state.wrapper = w.id; view?.setWrapper(w); renderWrapper(); persist(); });
     $('wrapper-swatches').append(el('div', { class: 'swatch' }, input,
       el('label', { for: `wrap-${w.id}`, title: w.name },
         el('span', { class: 'chip', style: `--paper:${w.paper}`, 'aria-hidden': 'true' }),
@@ -145,6 +194,7 @@ export function createUI(view) {
     state.message = messageInput.value.slice(0, LIMITS.messageMax);
     view?.setMessage(state.message);
     renderMessage();
+    persist();
   });
   messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') close(true); });
   const renderMessage = () => { messageCount.textContent = `${state.message.length}/${LIMITS.messageMax}`; };
@@ -320,6 +370,7 @@ export function createUI(view) {
     itemList.replaceChildren(...(rows.length ? rows : [el('li', { class: 'empty', text: 'No flowers yet. Click a flower below to add it.' })]));
     stemCount.textContent = `${stems} of ${LIMITS.maxStems} stems`;
     for (const f of FLOWERS) flowerBtns[f.id].setAttribute('aria-disabled', full ? 'true' : 'false');
+    persist();
   }
 
   // Re-rendering replaces the buttons, so put focus back on the same one.
@@ -330,23 +381,74 @@ export function createUI(view) {
     (btn || $('items-btn')).focus();
   }
 
+  // Swap the whole bouquet for another one (from a link or the saved list).
+  function apply(b) {
+    setCounts(b.stems);
+    state.wrapper = b.wrapper;
+    $(`wrap-${b.wrapper}`).checked = true;
+    view?.setWrapper(WRAPPERS.find((x) => x.id === b.wrapper));
+    state.message = messageInput.value = b.message;
+    view?.setMessage(b.message);
+    renderWrapper();
+    renderMessage();
+    persist();
+  }
+
   // A bouquet link opened (or pasted) while the page is already showing.
   window.addEventListener('hashchange', () => {
     const link = readLink();
     if (!link) return;
     // a sent bouquet has its own page; load it fresh so it plays its entrance
     if (link.received || received) { location.reload(); return; }
-    setCounts(link.stems);
-    state.wrapper = link.wrapper;
-    $(`wrap-${link.wrapper}`).checked = true;
-    view?.setWrapper(WRAPPERS.find((x) => x.id === link.wrapper));
-    state.message = messageInput.value = link.message;
-    view?.setMessage(link.message);
-    renderWrapper();
-    renderMessage();
+    apply(link);
   });
 
-  // --- first load: a shared bouquet from the link, or the example --------
+  // --- saved bouquets ----------------------------------------------------
+  const savedList = $('saved-list');
+  const savedPop = { btn: $('menu-btn'), panel: $('saved-pop'), quiet: true };
+  const same = (a, b) => JSON.stringify(cleanBouquet(a)) === JSON.stringify(cleanBouquet(b));
+  const describe = (b) => {
+    const names = FLOWERS.filter((f) => b.stems[f.id]).map((f) => f.name.toLowerCase());
+    const n = Object.values(b.stems).reduce((x, y) => x + y, 0);
+    return `${n} ${n === 1 ? 'stem' : 'stems'}: ${names.join(', ')}`;
+  };
+  const when = (t) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+
+  function renderSaved(newId = null) {
+    const rows = store.saved.map((entry) => {
+      const b = cleanBouquet(entry), w = WRAPPERS.find((x) => x.id === b.wrapper);
+      const title = b.message || `${w.name} bouquet`;
+      return el('li', { class: entry.id === newId ? 'new' : '' },
+        el('button', { type: 'button', class: 'saved-open', 'aria-label': `Open ${title}, saved ${when(entry.at)}, ${describe(b)}`, onclick: () => { apply(b); close(true); say('Bouquet opened.'); } },
+          el('i', { style: `background:${w.paper}`, 'aria-hidden': 'true' }),
+          el('b', { text: title }),
+          el('small', { text: `${when(entry.at)} · ${describe(b)}` })),
+        el('button', { type: 'button', class: 'saved-del', 'aria-label': `Delete ${title}`, title: 'Delete', onclick: () => {
+          store.saved = store.saved.filter((x) => x.id !== entry.id);
+          writeStore(store);
+          renderSaved();
+          (savedList.querySelector('button') || $('menu-btn')).focus();
+        } }, '\u00d7'));
+    });
+    savedList.replaceChildren(...(rows.length ? rows : [el('li', { class: 'empty', text: 'Nothing saved yet. Choose Save bouquet in the menu to keep one here.' })]));
+  }
+
+  $('save').addEventListener('click', () => {
+    close(true);
+    if (!totalStems(state.counts)) { say('Add a flower first, then save the bouquet.'); return; }
+    const now = snapshot();
+    // saving the same bouquet twice just moves it to the top
+    store.saved = store.saved.filter((x) => !same(x, now));
+    const entry = { ...now, id: Date.now().toString(36), at: Date.now() };
+    store.saved = [entry, ...store.saved].slice(0, SAVED_MAX);
+    if (!writeStore(store)) { say('This browser would not let the bouquet be saved. Use Send bouquet to keep a link instead.', 6000); return; }
+    track('Bouquet saved');
+    renderSaved(entry.id);
+    say('Bouquet saved. Open it again from Saved bouquets in the menu.');
+  });
+  $('open-saved').addEventListener('click', () => { renderSaved(); open(savedPop); });
+
+  // --- first load: from a link, the last visit, or the example ------------
   for (const [id, n] of Object.entries(start.stems)) {
     state.counts[id] = n;
     for (let i = 0; i < n; i++) view?.addStem(id, true);
@@ -356,9 +458,10 @@ export function createUI(view) {
   renderWrapper();
   renderMessage();
   render();
+  ready = true;
+  persist();
 
   // --- the receiver's page: only the bouquet and the message --------------
-  const received = !!link?.received;
   if (received) {
     for (const part of [document.querySelector('.topbar'), dockWrap]) { part.hidden = true; part.inert = true; }
     document.title = EMAIL.subject;
